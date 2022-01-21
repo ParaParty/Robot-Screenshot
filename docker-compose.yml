@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  node:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - selenium
+  selenium:
+    image: "selenium/standalone-firefox:96.0"

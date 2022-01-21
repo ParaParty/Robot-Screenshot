@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package robot;
+
+service Screenshot {
+  // Sends a greeting
+  rpc ShotBld(ScreenshotParam) returns (ScreenshotResult) {}
+}
+
+message ScreenshotParam { string dynamicId = 1; }
+
+message ScreenshotResult { bytes pngImage = 1; }

@@ -1,0 +1,18 @@
+{
+  "exclude": ["dist", "node_modules"],
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["ESNext", "DOM"],
+    "types": ["node"],
+    "jsx": "preserve",
+    "target": "ESNext",
+    "sourceMap": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "baseUrl": "."
+  }
+}
