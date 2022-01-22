@@ -139,6 +139,7 @@ async function process(did: string): Promise<Uint8Array> {
     return Buffer.from(screenshot, "base64");
   } catch (e) {
     await driver.quit();
+    _driver = buildDriver();
   }
   return Buffer.from([]);
 }
