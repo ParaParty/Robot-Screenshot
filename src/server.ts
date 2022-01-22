@@ -54,11 +54,12 @@ async function process(did: string): Promise<Uint8Array> {
 
     // wait until card is loaded
     const card = await driver.wait(
-      until.elementLocated(By.css(`.card[data-did="${did}"]`))
+      until.elementLocated(By.css(`.card[data-did="${did}"]`)),
+      2000
     );
 
     // wait until avatar is located
-    await driver.wait(until.elementLocated(By.css(`#dynamicId_${did}`)));
+    await driver.wait(until.elementLocated(By.css(`#dynamicId_${did}`)), 1000);
 
     // wait until all images are loaded
     await driver.executeAsyncScript(function () {
