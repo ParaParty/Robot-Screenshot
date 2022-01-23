@@ -1,11 +1,5 @@
 import "cross-fetch/polyfill";
-import {
-  Builder,
-  By,
-  Capabilities,
-  until,
-  WebDriver,
-} from "selenium-webdriver";
+import { Builder, By, Capabilities, until } from "selenium-webdriver";
 import * as grpc from "@grpc/grpc-js";
 import {
   IScreenshotServer,
@@ -17,20 +11,22 @@ const capabilities = Capabilities.firefox();
 
 async function buildDriver() {
   while (true) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const res = await fetch("http://selenium:4444/wd/hub/status").catch(() => {
-      console.log("connect to selenium failed, retry in 1s");
-    });
-    if (!res) {
-      continue;
-    }
-    const red = await res.json();
-    if (red.value.ready) {
+    try {
+      const res = await fetch("http://selenium:4444/wd/hub/status");
+      if (!res) {
+        throw undefined;
+      }
+      const red = await res.json();
+      if (!red.value.ready) {
+        console.log(red.value.message);
+        console.log(JSON.stringify(red.value));
+        throw undefined;
+      }
       break;
+    } catch (e) {
+      console.log("selenium is not ready, retry in 1s");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    console.log("selenium is not ready, retry in 1s");
-    console.log(red.value.message);
-    console.log(JSON.stringify(red.value));
   }
 
   console.log("connecting to driver");
@@ -52,10 +48,8 @@ async function buildDriver() {
   return driver;
 }
 
-let _driver: Promise<WebDriver> | undefined = buildDriver();
-
 async function process(did: string): Promise<Uint8Array> {
-  const driver = await (_driver ?? buildDriver());
+  const driver = await buildDriver();
   const log = (t: string) => {
     console.log(`[${did}] ${t}`);
   };
@@ -150,15 +144,10 @@ async function process(did: string): Promise<Uint8Array> {
     const screenshot = await card.takeScreenshot();
     log("screenshot taken");
 
-    // freeup memory
-    await driver.get("about:blank");
-    log("driver cleaned up");
-
     return Buffer.from(screenshot, "base64");
-  } catch (e) {
+  } finally {
     await driver.quit();
-    _driver = buildDriver();
-    throw e;
+    log("driver cleaned up");
   }
 }
 
