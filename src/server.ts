@@ -17,13 +17,20 @@ const capabilities = Capabilities.firefox();
 
 async function buildDriver() {
   while (true) {
-    const res = await fetch("http://selenium:4444/").catch(() => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const res = await fetch("http://selenium:4444/wd/hub/status").catch(() => {
       console.log("connect to selenium failed, retry in 1s");
     });
-    if (res?.status === 200) {
+    if (!res) {
+      continue;
+    }
+    const red = await res.json();
+    if (red.value.ready) {
       break;
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("selenium is not ready, retry in 1s");
+    console.log(red.value.message);
+    console.log(JSON.stringify(red.value));
   }
 
   console.log("connecting to driver");
@@ -138,6 +145,7 @@ async function process(did: string): Promise<Uint8Array> {
 
     return Buffer.from(screenshot, "base64");
   } catch (e) {
+    console.log(e);
     await driver.quit();
     _driver = buildDriver();
   }
