@@ -56,17 +56,24 @@ let _driver: Promise<WebDriver> | undefined = buildDriver();
 
 async function process(did: string): Promise<Uint8Array> {
   const driver = await (_driver ?? buildDriver());
+  const log = (t: string) => {
+    console.log(`[${did}] ${t}`);
+  };
   try {
+    log("navigating");
     await driver.get(`https://t.bilibili.com/${did}?tab=3`);
+    log("page loaded");
 
     // wait until card is loaded
     const card = await driver.wait(
       until.elementLocated(By.css(`.card[data-did="${did}"]`)),
       5000
     );
+    log("card loaded");
 
     // wait until avatar is located
     await driver.wait(until.elementLocated(By.css(`#dynamicId_${did}`)), 2000);
+    log("avatar located");
 
     // wait until all images are loaded
     await driver.executeAsyncScript(function () {
@@ -110,6 +117,7 @@ async function process(did: string): Promise<Uint8Array> {
         else img.addEventListener("load", finishOne);
       });
     }, did);
+    log("images loaded");
 
     await driver.executeScript(function () {
       // make comment box invisible
@@ -130,6 +138,7 @@ async function process(did: string): Promise<Uint8Array> {
       // scale up
       document.body.style.scale = "1.5";
     }, card);
+    log("ready to take screenshot");
 
     // await driver.wait(
     //   until.elementIsNotVisible(
@@ -139,17 +148,18 @@ async function process(did: string): Promise<Uint8Array> {
     // );
 
     const screenshot = await card.takeScreenshot();
+    log("screenshot taken");
 
     // freeup memory
     await driver.get("about:blank");
+    log("driver cleaned up");
 
     return Buffer.from(screenshot, "base64");
   } catch (e) {
-    console.log(e);
     await driver.quit();
     _driver = buildDriver();
+    throw e;
   }
-  return Buffer.from([]);
 }
 
 let queue = Promise.resolve();
@@ -163,6 +173,7 @@ const screenshotService: IScreenshotServer = {
       try {
         res = await process(call.request.getDynamicid());
       } catch (e) {
+        console.log(`[${call.request.getDynamicid()}] failed with error: `, e);
         res = Buffer.from([]);
       }
       const msg = new ScreenshotResult();
