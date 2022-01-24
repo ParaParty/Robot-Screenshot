@@ -6,5 +6,9 @@ services:
       - "3000:3000"
     depends_on:
       - selenium
+    environment:
+      - TZ=Asia/Shanghai
   selenium:
     image: "selenium/standalone-firefox:96.0"
+    environment:
+      - TZ=Asia/Shanghai
