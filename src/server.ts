@@ -55,8 +55,8 @@ async function buildDriverLocal() {
   return driver
 }
 
-async function process(did: string): Promise<Uint8Array> {
-  const driver = await buildDriver()
+async function run(did: string): Promise<Uint8Array> {
+  const driver = process.env.DEV ? await buildDriverLocal() : await buildDriver()
   const log = (t: string) => {
     console.log(`[${did}] ${t}`)
   }
@@ -66,12 +66,28 @@ async function process(did: string): Promise<Uint8Array> {
     log('page loaded')
 
     // wait until card is loaded
-    const card = await driver.wait(until.elementLocated(By.css(`.card[data-did="${did}"]`)), 5000)
+    const card = await driver.wait(until.elementLocated(By.css('.bili-dyn-item')), 5000)
     log('card loaded')
 
-    // wait until avatar is located
-    await driver.wait(until.elementLocated(By.css(`#dynamicId_${did}`)), 2000)
-    log('avatar located')
+    // wait for album
+    if ((await driver.findElements(By.css('.bili-album'))).length) {
+      log('album detected')
+      await driver.wait(until.elementLocated(By.css('.bili-album__preview__picture__img.bili-awesome-img')), 5000)
+      log('album loaded')
+
+      // expand album one preview
+      const one = await driver.findElements(By.css('.bili-album__preview.one'))
+      if (one.length) {
+        log('album one detected')
+        await driver.executeScript(function () {
+          const one: HTMLDivElement = arguments[0]
+          const preview = one.firstChild as HTMLDivElement
+          preview.click()
+        }, one[0])
+        await driver.wait(until.elementLocated(By.css('.bili-album__watch[style=""]')), 5000)
+        log('album one loaded')
+      }
+    }
 
     // wait until all images are loaded
     await driver.executeAsyncScript(
@@ -81,7 +97,7 @@ async function process(did: string): Promise<Uint8Array> {
         const callback = arguments[arguments.length - 1]
         const images = Array.from(card.querySelectorAll<HTMLImageElement>('img'))
 
-        const bgImages = document.querySelectorAll('.card .main-content .button-bar span > i, .card .main-content .post-content .imagesbox .card div.img-content')
+        const bgImages = document.querySelectorAll('.bili-dyn-action__icon, .bili-rich-text-link::before, [style]')
         bgImages.forEach((node) => {
           const uri = window.getComputedStyle(node).getPropertyValue('background-image')
           if (!uri.startsWith('url(')) return
@@ -113,31 +129,36 @@ async function process(did: string): Promise<Uint8Array> {
     )
     log('images loaded')
 
+    // apply styles
     await driver.executeScript(function () {
       const card: HTMLDivElement = arguments[0]
       // clear border
       card.style.border = 'none'
-      // make comment box invisible
-      const commentbox = card.querySelector<HTMLDivElement>('.panel-area')!
-      commentbox.style.display = 'none'
-      // make share button invisible
-      const bottonAera = card.querySelector<HTMLDivElement>('.button-area')!
-      bottonAera.style.display = 'none'
+
+      // diactivate active buttons
+      const buttons = card.querySelectorAll('.bili-dyn-action.active')
+      buttons.forEach((button) => {
+        button.classList.remove('active')
+      })
 
       // make login box invisible
       const style = document.createElement('style')
       style.innerHTML = `
-        .van-popover.van-popper {
+        .van-popover.van-popper,
+        .login-tip,
+        .bili-dyn-item__panel,
+        .bili-dyn-item__more,
+        .bili-album__watch__control {
           display: none !important;
         }
-        .login-tip {
-          display: none !important;
+        .bili-album__watch__content {
+          background: none !important;
+        }
+        .bili-dyn-item__ornament {
+          right: 12px !important;
         }
       `
       document.head.appendChild(style)
-
-      // scale up
-      document.body.style.scale = '1.5'
     }, card)
     log('ready to take screenshot')
 
@@ -160,7 +181,7 @@ const screenshotService: IScreenshotServer = {
     queue = queue.then(async () => {
       let res: Uint8Array
       try {
-        res = await process(call.request.getDynamicid())
+        res = await run(call.request.getDynamicid())
       } catch (e) {
         console.log(`[${call.request.getDynamicid()}] failed with error: `, e)
         res = Buffer.from([])

@@ -9,6 +9,6 @@ services:
     environment:
       - TZ=Asia/Shanghai
   selenium:
-    image: "selenium/standalone-firefox:96.0"
+    image: "selenium/standalone-firefox:latest"
     environment:
       - TZ=Asia/Shanghai
